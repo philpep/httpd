@@ -20,71 +20,91 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
+#include "httpd.h"
 #include "client.h"
 #include "response.h"
 
-/* top of the client slist */
+struct httpd conf;
+
+static void usage(void);
+static void *httpd_accept(void *arg);
 static void *serve(void *);
+
+static void
+usage(void)
+{
+	(void)fprintf(stderr, "usage : %s [-hd] -f file\n"
+			"\t-h\t\tShow this page\n"
+			"\t-d\t\tLaunch daemonized\n"
+			"\t-f file\t\tLoad configuration file\n",
+			getprogname());
+	exit(1);
+}
 
 int
 main(int argc, char *argv[])
 {
 	int o;
 	int daemon = 0;
-	struct addrinfo hint, *res;
-	int tmp;
-	int fd; /* server socket */
-	struct sockaddr_storage srv_addr;
 	pid_t pid;
-	struct Client *c;
+	struct listener *l;
+	char *file = NULL;
 
-	while ((o = getopt(argc, argv, "dh")) != EOF)
+	while ((o = getopt(argc, argv, "df:h")) != EOF)
 	{
 		switch (o)
 		{
 			case 'd':
 				daemon = 1;
 				break;
+			case 'f':
+				file = optarg;
+				break;
 			case '?':
 			case 'h':
-				errx(EXIT_FAILURE, "usage : httpd [-d]");
+				usage();
 				break;
 		}
 	}
 
-	warnx("Server listen on %s:%s root %s", "*", "8081", ".");
+	if (!file)
+	{
+		warnx("missing config file");
+		usage();
+	}
 
+	/* get config */
+	TAILQ_INIT(&conf.list);
+	if (parse_config(file) != 0)
+		exit(EXIT_FAILURE);
 
-	bzero(&hint, sizeof(hint));
-	hint.ai_flags = AI_PASSIVE;
-	hint.ai_socktype = SOCK_STREAM;
-	hint.ai_family = PF_INET;
-
-	if (NULL /* TODO CONF HOST */)
-		hint.ai_flags |= AI_CANONNAME;
-
-	if ((tmp = getaddrinfo(NULL/* TODO CONF HOST */, "8080" /* TODO CONF PORT */, &hint, &res)))
-		errx(EXIT_FAILURE, "getaddrinfo : %s", gai_strerror(tmp));
-
-
-	if ((fd = socket(res->ai_family,
-					res->ai_socktype,
-					res->ai_protocol)) == -1)
-		err(EXIT_FAILURE, "socket");
-
-	memcpy(&srv_addr, res->ai_addr, res->ai_addrlen);
-
-	/* set socket options */
-	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-				(int[]){1}, sizeof(int)) == -1)
-		err(EXIT_FAILURE, "setsockopt");
-
-	if (bind(fd, (struct sockaddr *)&srv_addr,
-				res->ai_addrlen) == -1)
-		err(EXIT_FAILURE, "bind");
-
-	if (listen(fd, 5) < 0)
-		err(EXIT_FAILURE, "listen");
+	TAILQ_FOREACH(l, &conf.list, entry)
+	{
+		if ((l->fd = socket(l->ss.ss_family, SOCK_STREAM, 0)) == -1)
+		{
+			warn("socket");
+			l->running = 0;
+			continue;
+		}
+		/* set socket options */
+		if (setsockopt(l->fd, SOL_SOCKET, SO_REUSEADDR,
+					(int[]){1}, sizeof(int)) == -1) {
+			warn("setsockopt");
+			l->running = 0;
+			continue;
+		}
+		if (bind(l->fd, (struct sockaddr *)&l->ss, l->ss.ss_len) == -1) {
+			warn("bind");
+			l->running = 0;
+			continue;
+		}
+		if (listen(l->fd, 5) < 0) {
+			warn("listen");
+			l->running = 0;
+			continue;
+		}
+		l->running = 1;
+	}
 
 	/* daemonize */
 	if (daemon && getppid() != 1)
@@ -107,30 +127,44 @@ main(int argc, char *argv[])
 		freopen("/dev/null", "w", stderr);
 	}
 
-	SLIST_INIT(&clients);
-	c = client_new();
-	socklen_t sin_size;
-
-	/* main loop */
-	for (;;)
+	TAILQ_FOREACH(l, &conf.list, entry)
 	{
-		sin_size = sizeof(struct sockaddr_in);
-
-		if ((c->fd = accept(fd, (struct sockaddr*)&c->sin, &sin_size)) < 0)
-			continue;
-
-		/* Reflexion : fatal or not ? */
-		if (pthread_create(&c->tid, NULL, serve, (void*)c) != 0)
+		if (l->running && pthread_create(&l->tid, NULL, httpd_accept, (void*)l) != 0)
+		{
 			warn("pthread_create");
+			l->running = 0;
+		}
+	}
 
-		//warnx("%s:%d on socket %d", inet_ntoa(c->sin.sin_addr),
-		//htons(c->sin.sin_port), c->fd);
-
-		CLIENT_ADD(c);
-		c = client_new();
+	TAILQ_FOREACH(l, &conf.list, entry)
+	{
+		if (l->running)
+			pthread_join(l->tid, NULL);
 	}
 
 	return EXIT_SUCCESS;
+}
+
+static void *
+httpd_accept(void *arg)
+{
+	socklen_t len;
+	struct Client *c;
+	struct listener *l = arg;
+
+	c = client_new();
+	for(;;)
+	{
+		len = sizeof(*l);
+		if ((c->fd = accept(l->fd, (struct sockaddr*)&c->ss, &len)) < 0)
+			continue;
+
+		if (pthread_create(&c->tid, NULL, serve, (void*)c) != 0)
+			warn("pthread_create");
+		CLIENT_ADD(c);
+		c = client_new();
+	}
+	return NULL;
 }
 
 static void *

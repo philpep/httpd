@@ -9,11 +9,7 @@
 #include <err.h>
 
 #include "tools.h"
-
-typedef struct Stack {
-	void *adr;
-	SLIST_ENTRY(Stack) next;
-} Stack;
+#include "stack.h"
 
 struct st_code {
 	int code;
@@ -29,7 +25,7 @@ struct http_hdrs {
 struct Client {
 	pthread_t			tid;
 	int					fd;
-	struct				sockaddr_in sin;
+	struct				sockaddr_storage ss;
 	SLIST_HEAD(, Stack) mstack;
 	enum { HTTP11, HTTP10 } version;	/* HTTP version */
 	enum { GET, HEAD, POST, OPTIONS,
@@ -54,37 +50,5 @@ void client_destroy(void);
 void mstack_push(void *);
 
 #define CLIENT_ADD(c)	SLIST_INSERT_HEAD(&clients, c, next)
-
-/* usefull macros */
-#define XMALLOC(ptr, size)					\
-	do {									\
-		if (!(ptr = malloc(size)))			\
-			err(EXIT_FAILURE, "malloc");	\
-	} while (0)
-
-#define XSTRDUP(dst, src)					\
-	do {									\
-		if (!(dst = strdup(src)))			\
-			err(EXIT_FAILURE, "strdup");	\
-	} while (0)
-
-#define XREALLOC(ptr, size)					\
-	do {									\
-		if (!(ptr = realloc(ptr, size)))	\
-			err(EXIT_FAILURE, "realloc");   \
-	} while (0)
-
-#define ZMALLOC(ptr, size)					\
-	do {									\
-		XMALLOC(ptr, size);					\
-		mstack_push(ptr);					\
-	} while (0)
-
-#define ZSTRDUP(dst, src)					\
-	do {									\
-		XSTRDUP(dst, src);					\
-		mstack_push(dst);					\
-	} while (0)
-
 
 #endif /* H_CLIENT */
