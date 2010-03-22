@@ -54,6 +54,32 @@ splitstr(char *str, const char *sep, size_t *n)
 	return split;
 }
 
+char *
+unsplit(char **str, char *sep)
+{
+	size_t i, n, len = 0;
+	char *ret;
+
+	for (n = 0; str[n]; n++)
+		len += strlen(str[n]);
+
+	if (sep)
+		len += n*strlen(sep);
+
+
+	ZMALLOC(ret, len * sizeof(char));
+	ret[0] = '\0';
+
+	for (i = 0; i < n; i++) {
+		ret = strcat(ret, str[i]);
+		if (sep && i != (n-1))
+			ret = strcat(ret, sep);
+	}
+
+	return ret;
+}
+
+
 int
 zasprintf(char **ptr, const char *fmt, ...)
 {

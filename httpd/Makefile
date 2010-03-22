@@ -1,8 +1,8 @@
 PROG= httpd
-SRCS= httpd.c tools.c client.c response.c parse.y
+SRCS= httpd.c tools.c client.c response.c parse.y token.l
 CFLAGS+= -Wall -W -Wextra -g -ggdb3
 LDFLAGS+= -lc -lpthread -lmagic
-YFLAGS=
+YACCFLAGS+=-d
 NO_MAN= YES
 
 

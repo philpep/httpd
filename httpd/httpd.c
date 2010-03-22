@@ -67,14 +67,12 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (!file)
-	{
+	if (!file) {
 		warnx("missing config file");
-		usage();
+		exit(EXIT_FAILURE);
 	}
 
 	/* get config */
-	TAILQ_INIT(&conf.list);
 	if (parse_config(file) != 0)
 		exit(EXIT_FAILURE);
 

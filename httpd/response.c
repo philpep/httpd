@@ -24,11 +24,13 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
+#include "httpd.h"
 #include "response.h"
+#include "version.h"
 
 #define INTERNAL_SERVER_ERROR "HTTP/1.1 500 Internal Server Error\r\n" \
 	"Connection: close\r\n" \
-	"Server: OpenHTTPD/1.0\r\n\r\n"
+	"Server: "SERVER_STRING"\r\n\r\n"
 
 
 static void send_error(struct Client *c);
@@ -95,6 +97,8 @@ request_manage(struct Client *c)
 			break;
 		}
 	
+		c->smethod = line[0];
+
 		if (!strcmp(line[0], "GET"))
 			c->method = GET;
 		else if (!strcmp(line[0], "HEAD"))
@@ -125,6 +129,8 @@ request_manage(struct Client *c)
 			break;
 		}
 	
+		c->sversion = line[2];
+
 		if (!strcmp(line[2], "HTTP/1.1"))
 			c->version = HTTP11;
 		else if (!strcmp(line[2], "HTTP/1.0"))
@@ -136,18 +142,20 @@ request_manage(struct Client *c)
 	
 		for (i = 1; hdrs[i] != NULL; i++)
 		{
-			line = splitstr(hdrs[i], ": ", NULL);
-	
-			if (line && line[0] && line[1]) {
-				ZMALLOC(hel, sizeof(*hel));
-				hel->key = line[0];
-				hel->val = line[1];
-				SLIST_INSERT_HEAD(&c->reqh, hel, next);
-				printf("'%s'\t->\t'%s'\n", line[0], line[1]);
+			if (!(line[0] = strstr(hdrs[i], ": "))) {
+				c->code = 400;
+				break;
 			}
+
+			*line[0] = '\0';
+			line[0] += 2;
+			ZMALLOC(hel, sizeof(*hel));
+			hel->key = hdrs[i];
+			hel->val = line[0];
+			SLIST_INSERT_HEAD(&c->reqh, hel, next);
+			/*printf("'%s'->'%s'\n", hel->key, hel->val);*/
 		}
 	} while (0);
-
 
 	if (c->code != 0)
 		send_error(c);
@@ -178,25 +186,65 @@ send_uri(struct Client *c)
 	char *uri, *ptr;
 	char path[PATH_MAX];
 	char root[PATH_MAX];
+	char *requested = NULL;
+	struct vhost *vh; 
 	struct stat st;
 	ssize_t n;
 	char buf[BUFSIZ];
 	struct magic_set *magic;
 
-	if (c->uri[0] == '/')
+	if (c->uri[0] == '/') {
 		ZSTRDUP(uri, c->uri);
+		c->vhost = header_get(c, "Host");
+	}
 	else /* http:// */ {
 		if ((uri = strchr(c->uri + 7, '/')))
+		{
+			ZCALLOC(c->vhost, strlen(c->uri+7), sizeof(char));
+			memcpy(c->vhost, c->uri+7, uri - c->uri-7);
 			ZSTRDUP(uri, uri);
-		else
+		}
+		else {
+			c->vhost = c->uri + 7;
 			ZSTRDUP(uri, "/");
+		}
 	}
 
-	if ((ptr = strchr(uri, '?')))
+	if (c->vhost == NULL) {
+		c->code = 400;
+		return send_error(c);
+	}
+
+	/* Sometimes port is in vhost request */
+	if ((ptr = strchr(c->vhost, ':')))
 		*ptr = '\0';
 
-	if (!realpath(uri+1, path) ||
-			!realpath("."/* TODO CONF ROOT */, root) ||
+	if ((ptr = strchr(uri, '?'))) {
+		c->query_string = ptr+1;
+		*ptr = '\0';
+	}
+
+	c->path_info = uri;
+
+	/* search vhost */
+	TAILQ_FOREACH(vh, &conf.vhosts, entry) {
+		if (!strcmp(vh->host, c->vhost)) {
+			ZMALLOC(requested, sizeof(char) *
+					(strlen(vh->root)+strlen(uri)));
+			strcpy(requested, vh->root);
+			strcat(requested, uri);
+			break;
+		}
+	}
+
+	if (!requested) {
+		c->code = 404;
+		return send_error(c);
+	}
+
+	/* Check if requested is in root directory */
+	if (!realpath(requested, path) ||
+			!realpath(vh->root, root) ||
 			strncmp(path, root, strlen(root)))
 	{
 		c->code = 404;
@@ -292,7 +340,7 @@ header_send(struct Client *c)
 
 	header_set(c, "Connection", "close");
 	header_set(c, "Date", getdate(date));
-	header_set(c, "Server", "OpenHTTPD/1.0");
+	header_set(c, "Server", SERVER_STRING);
 
 	zwrite(c->fd, "HTTP/1.1 %d %s\r\n", c->code, st->msg);
 	SLIST_FOREACH(h, &c->resh, next)

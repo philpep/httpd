@@ -28,11 +28,17 @@ struct Client {
 	struct				sockaddr_storage ss;
 	SLIST_HEAD(, Stack) mstack;
 	enum { HTTP11, HTTP10 } version;	/* HTTP version */
+	char				*sversion;	/* version string */
 	enum { GET, HEAD, POST, OPTIONS,
 		PUT, DELETE, TRACE, CONNECT, NONE } method;
+	char				*smethod;	/* method string */
 	char				*uri;
+	char				*path_info;		/* PATH_INFO for CGI */
+	char				*cgi;	/* path for CGI file */
+	char				*query_string;	/* QUERY_STRING for CGI */
 	void				*body;		/* body data */
 	size_t				bsize;		/* body size */
+	char				*vhost;		/* virtual host */
 	SLIST_HEAD(, http_hdrs) reqh;	/* request headers */
 	int					f;			/* open file */
 	int					code;		/* status code */
