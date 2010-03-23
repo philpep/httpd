@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include "client.h"
 
+extern pthread_mutex_t client_lock;
+
 struct Client *
 client_new(void)
 {
@@ -36,6 +38,8 @@ client_destroy(void)
 	struct Client *c = client_get();
 	Stack *el;
 
+	pthread_mutex_lock(&client_lock);
+
 	close(c->fd);
 
 	if (c->f != -1)
@@ -51,6 +55,8 @@ client_destroy(void)
 
 	SLIST_REMOVE(&clients, c, Client, next);
 
+	pthread_mutex_unlock(&client_lock);
+
 	pthread_exit(NULL);
 }
 
@@ -65,9 +71,11 @@ client_get(void)
 	SLIST_FOREACH(c, &clients, next)
 	{
 		if (c->tid == tid)
-			break;
+			return c;
 	}
-	return c;
+	warnx("WARNING : client lost\n");
+	pthread_exit(NULL);
+	return NULL;
 }
 
 void

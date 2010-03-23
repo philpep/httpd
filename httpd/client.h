@@ -11,11 +11,6 @@
 #include "tools.h"
 #include "stack.h"
 
-struct st_code {
-	int code;
-	char *msg;
-};
-
 struct http_hdrs {
 	char *key;
 	char *val;

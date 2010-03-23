@@ -16,7 +16,15 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <libgen.h>
 #include "response.h"
+
+static struct mime_type {
+	const char *ext;
+	const char *val;
+} m_type[] = {
+#include "mime_types.h"
+};
 
 char **
 splitstr(char *str, const char *sep, size_t *n)
@@ -115,7 +123,7 @@ zwrite(int fd, const char *fmt, ...)
 }
 
 char *
-getdate(char *date)
+get_date(char *date)
 {
 	time_t ts;
 	ts = time(NULL);
@@ -123,3 +131,21 @@ getdate(char *date)
 	return date;
 }
 
+const char *
+get_mime_type(const char *path)
+{
+	size_t i;
+	char *ext;
+
+	if ((ext = basename(path)) &&
+			(ext = strrchr(ext, '.'))) {
+		ext++;
+		for (i = 0; i < sizeof(m_type)/sizeof(*m_type); i++)
+		{
+			if (!strcmp(m_type[i].ext, ext))
+				return m_type[i].val;
+		}
+	}
+
+	return "text/plain; charset=utf-8";
+}

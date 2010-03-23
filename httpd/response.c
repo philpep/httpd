@@ -19,7 +19,6 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <magic.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -32,7 +31,6 @@
 	"Connection: close\r\n" \
 	"Server: "SERVER_STRING"\r\n\r\n"
 
-
 static void send_error(struct Client *c);
 static void send_uri(struct Client *c);
 static void header_send(struct Client *c);
@@ -40,8 +38,10 @@ static void header_set(struct Client *c, const char *key, const char *fmt, ...);
 static char *header_get(struct Client *c, const char *key);
 static char *status_get(int code);
 
-
-static struct st_code status_code[] = {
+static struct st_code {
+	int code;
+	char *msg;
+} status_code[] = {
 #include "status_code.h"
 };
 
@@ -191,7 +191,6 @@ send_uri(struct Client *c)
 	struct stat st;
 	ssize_t n;
 	char buf[BUFSIZ];
-	struct magic_set *magic;
 
 	if (c->uri[0] == '/') {
 		ZSTRDUP(uri, c->uri);
@@ -258,12 +257,9 @@ send_uri(struct Client *c)
 		return send_error(c);
 	}
 
-	if ((magic = magic_open(MAGIC_MIME_TYPE)))
-		magic_load(magic, NULL);
-
 	c->code = 200;
 	header_set(c, "Content-Length", "%llu", st.st_size);
-	header_set(c, "Content-Type", "%s", (magic) ? magic_file(magic, path) : "text/plain");
+	header_set(c, "Content-Type", "%s", get_mime_type(path));
 	header_send(c);
 
 	if (c->method != HEAD)
@@ -274,8 +270,6 @@ send_uri(struct Client *c)
 			HTTPD_WRITE(c->fd, buf, n);
 		}
 
-	if (magic)
-		magic_close(magic);
 }
 
 static char *
@@ -339,7 +333,7 @@ header_send(struct Client *c)
 	}
 
 	header_set(c, "Connection", "close");
-	header_set(c, "Date", getdate(date));
+	header_set(c, "Date", get_date(date));
 	header_set(c, "Server", SERVER_STRING);
 
 	zwrite(c->fd, "HTTP/1.1 %d %s\r\n", c->code, st->msg);

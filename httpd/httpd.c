@@ -25,6 +25,7 @@
 #include "response.h"
 
 struct httpd conf;
+pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void usage(void);
 static void *httpd_accept(void *arg);
@@ -163,7 +164,9 @@ httpd_accept(void *arg)
 
 		if (pthread_create(&c->tid, NULL, serve, (void*)c) != 0)
 			warn("pthread_create");
+		pthread_mutex_lock(&client_lock);
 		CLIENT_ADD(c);
+		pthread_mutex_unlock(&client_lock);
 		c = client_new();
 	}
 	return NULL;
