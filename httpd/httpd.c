@@ -76,6 +76,10 @@ main(int argc, char *argv[])
 	if (parse_config(file) != 0)
 		exit(EXIT_FAILURE);
 
+	if (chdir("/") == -1)
+		err(1, "/");
+
+
 	TAILQ_FOREACH(l, &conf.list, entry)
 	{
 		if ((l->fd = socket(l->ss.ss_family, SOCK_STREAM, 0)) == -1)
