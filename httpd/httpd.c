@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -80,6 +81,8 @@ main(int argc, char *argv[])
 	if (chdir("/") == -1)
 		err(1, "/");
 
+	/* ignore SIGPIPE (use EPIPE instead) */
+	signal(SIGPIPE, SIG_IGN);
 
 	TAILQ_FOREACH(l, &conf.list, entry)
 	{

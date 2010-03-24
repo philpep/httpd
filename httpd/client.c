@@ -73,7 +73,7 @@ client_get(void)
 		if (c->tid == tid)
 			return c;
 	}
-	warnx("WARNING : client lost\n");
+	warnx("client lost\n");
 	pthread_exit(NULL);
 	return NULL;
 }

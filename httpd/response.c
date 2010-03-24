@@ -50,17 +50,34 @@ request_manage(struct Client *c)
 {
 	char buf[BUFSIZ];
 	void *data = NULL;
-	ssize_t n;
+	ssize_t n = 0;
 	size_t nread = 0;
-	off_t offset;
+	off_t offset = 0;
 	char **hdrs, **line;
 	size_t hdrs_size, i;
 	struct http_hdrs *hel;	/* header element */
+	char *conn;
 
-	signal(SIGPIPE, SIG_IGN);
+	if (c->bsize != 0) {
+		XMALLOC(data, c->bsize);
+		memcpy(data, c->body, c->bsize);
+		nread = c->bsize;
+	}
 
-	while ((n = read(c->fd, buf, BUFSIZ)) != -1 && n != 0)
+	for(;;)
 	{
+		if ((c->body = memmem(data+offset, nread-offset, "\r\n\r\n", 4))) {
+			*(char*)c->body = '\0';
+			c->body += 4;
+			c->bsize = data + nread - c->body;
+			break;
+		}
+
+		n = read(c->fd, buf, BUFSIZ);
+
+		if (n == -1 || n == 0)
+			break;
+
 		nread += n;
 
 		XREALLOC(data, nread);
@@ -68,12 +85,6 @@ request_manage(struct Client *c)
 
 		offset = (nread-n-4 > 0) ? nread-n-4 : 0;
 
-		if ((c->body = memmem(data+offset, nread-offset, "\r\n\r\n", 4))) {
-			*(char*)c->body = '\0';
-			c->body += 4;
-			c->bsize = c->body - data;
-			break;
-		}
 	}
 
 	if (n == -1 || n == 0)
@@ -157,10 +168,20 @@ request_manage(struct Client *c)
 		}
 	} while (0);
 
+	if ((conn = header_get(c, "Connection")) &&
+			!strcmp(conn, "close")) {
+		c->conn = CLOSE;
+	}
+	else
+		c->conn = KEEP_ALIVE;
+
 	if (c->code != 0)
 		send_error(c);
 	else
 		send_uri(c);
+
+	if (c->conn == KEEP_ALIVE)
+		return request_manage(c);
 
 	client_destroy();
 }
@@ -332,7 +353,8 @@ header_send(struct Client *c)
 		return header_send(c);
 	}
 
-	header_set(c, "Connection", "close");
+	if (c->conn == CLOSE)
+		header_set(c, "Connection", "close");
 	header_set(c, "Date", get_date(date));
 	header_set(c, "Server", SERVER_STRING);
 

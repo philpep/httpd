@@ -37,6 +37,8 @@ struct Client {
 	SLIST_HEAD(, http_hdrs) reqh;	/* request headers */
 	int					f;			/* open file */
 	int					code;		/* status code */
+	enum { KEEP_ALIVE, CLOSE } conn; /* connection type (keep-alive / close */
+	off_t				offset; /* data ofset */
 	SLIST_HEAD(, http_hdrs) resh;		/* response headers */
 	SLIST_ENTRY(Client) next;
 };
