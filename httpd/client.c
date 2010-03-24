@@ -68,11 +68,16 @@ client_get(void)
 
 	tid = pthread_self();
 
+	pthread_mutex_lock(&client_lock);
 	SLIST_FOREACH(c, &clients, next)
 	{
 		if (c->tid == tid)
+		{
+			pthread_mutex_unlock(&client_lock);
 			return c;
+		}
 	}
+	pthread_mutex_unlock(&client_lock);
 	warnx("client lost\n");
 	pthread_exit(NULL);
 	return NULL;
