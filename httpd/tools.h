@@ -6,7 +6,7 @@ char *unsplit(char **, char *);
 int zasprintf(char **, const char *, ...);
 void zwrite(int, const char *, ...);
 char *get_date(char *);
-const char *get_mime_type(const char *);
+const char *get_mime_type(char *);
 
 
 #endif /* H_TOOLS */

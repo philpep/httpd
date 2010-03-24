@@ -4,6 +4,7 @@
 #include <sys/queue.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 struct listener {
 	pthread_t				tid;

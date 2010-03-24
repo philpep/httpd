@@ -18,8 +18,8 @@
 %option nounput
 %{
 #include "stack.h"
-#include "parse.h"
 #include "yystype.h"
+#include "parse.h"
 %}
 
 word [a-zA-Z0-9\-\\\./\[\:\]]+

@@ -1,3 +1,7 @@
-SUBDIR= httpd
+all:
+	@(cd httpd && $(MAKE))
 
-.include <bsd.subdir.mk>
+.PHONY: clean
+
+clean:
+	@(cd httpd && $(MAKE) $@)

@@ -35,8 +35,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "parse.h"
 #include "yystype.h"
+#include "parse.h"
 #include "stack.h"
 #include "httpd.h"
 
@@ -186,7 +186,9 @@ host_v4(const char *s, in_port_t port)
 
 	XCALLOC(h, 1, sizeof(*h));
 	sain = (struct sockaddr_in *)&h->ss;
+#if ! defined (__linux__)
 	sain->sin_len = sizeof(struct sockaddr_in);
+#endif
 	sain->sin_family = AF_INET;
 	sain->sin_addr.s_addr = ina.s_addr;
 	sain->sin_port = port;
@@ -207,7 +209,9 @@ host_v6(const char *s, in_port_t port)
 
 	XCALLOC(h, 1, sizeof(*h));
 	sin6 = (struct sockaddr_in6 *)&h->ss;
+#if ! defined (__linux__)
 	sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_port = port;
 	memcpy(&sin6->sin6_addr, &ina6, sizeof(ina6));
@@ -245,13 +249,17 @@ host_dns(const char *s, in_port_t port)
 		h->ss.ss_family = res->ai_family;
 		if (res->ai_family == AF_INET) {
 			sain = (struct sockaddr_in *)&h->ss;
+#if ! defined (__linux__)
 			sain->sin_len = sizeof(struct sockaddr_in);
+#endif
 			sain->sin_addr.s_addr = ((struct sockaddr_in *)
 			    res->ai_addr)->sin_addr.s_addr;
 			sain->sin_port = port;
 		} else {
 			sin6 = (struct sockaddr_in6 *)&h->ss;
+#if ! defined (__linux__)
 			sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 			memcpy(&sin6->sin6_addr, &((struct sockaddr_in6 *)
 			    res->ai_addr)->sin6_addr, sizeof(struct in6_addr));
 			sin6->sin6_port = port;
@@ -306,14 +314,18 @@ interface(const char *s, in_port_t port)
 			case AF_INET:
 				sain = (struct sockaddr_in *)&h->ss;
 				*sain = *(struct sockaddr_in *)p->ifa_addr;
+#if ! defined (__linux__)
 				sain->sin_len = sizeof(struct sockaddr_in);
+#endif
 				sain->sin_port = port;
 				break;
 
 			case AF_INET6:
 				sin6 = (struct sockaddr_in6 *)&h->ss;
 				*sin6 = *(struct sockaddr_in6 *)p->ifa_addr;
+#if ! defined (__linux__)
 				sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 				sin6->sin6_port = port;
 				break;
 

@@ -17,5 +17,14 @@ struct {
 YYSTYPE yylval;
 int yylex(void);
 
+/* bison need this */
+#define YYSTYPE_IS_DECLARED 1
+
+/*
+ * disable flex warning
+ * <stdout>: warning: ‘input’ defined but not used
+*/
+#define YY_NO_INPUT 1
+
 
 #endif /* H_YYSTYPE */

@@ -132,7 +132,7 @@ get_date(char *date)
 }
 
 const char *
-get_mime_type(const char *path)
+get_mime_type(char *path)
 {
 	size_t i;
 	char *ext;

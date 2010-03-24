@@ -31,6 +31,7 @@ pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 static void usage(void);
 static void *httpd_accept(void *arg);
 static void *serve(void *);
+extern char *__progname;
 
 static void
 usage(void)
@@ -39,7 +40,7 @@ usage(void)
 			"\t-h\t\tShow this page\n"
 			"\t-d\t\tLaunch daemonized\n"
 			"\t-f file\t\tLoad configuration file\n",
-			getprogname());
+			__progname);
 	exit(1);
 }
 
@@ -51,6 +52,7 @@ main(int argc, char *argv[])
 	pid_t pid;
 	struct listener *l;
 	char *file = NULL;
+	socklen_t len;
 
 	while ((o = getopt(argc, argv, "df:h")) != EOF)
 	{
@@ -99,7 +101,14 @@ main(int argc, char *argv[])
 			l->running = 0;
 			continue;
 		}
-		if (bind(l->fd, (struct sockaddr *)&l->ss, l->ss.ss_len) == -1) {
+
+#if defined (__linux__)
+		len = sizeof(l->ss);
+#else
+		len = l->ss.ss_len;
+#endif
+
+		if (bind(l->fd, (struct sockaddr *)&l->ss, sizeof(l->ss)) == -1) {
 			warn("bind");
 			l->running = 0;
 			continue;
