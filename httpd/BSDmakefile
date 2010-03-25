@@ -3,7 +3,7 @@ SRCS= httpd.c tools.c client.c parse.y token.l
 CFLAGS+= -Wall -W -Wextra -g -ggdb3
 LDFLAGS+= -lc -lpthread
 YACCFLAGS+=-d
-NO_MAN= YES
+MAN8=httpd.8
 
 
 .include <bsd.prog.mk>
