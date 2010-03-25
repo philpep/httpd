@@ -51,6 +51,7 @@ main(int argc, char *argv[])
 	pid_t pid;
 	struct listener *l;
 	char *file = NULL;
+	char ip[INET6_ADDRSTRLEN];
 	socklen_t len;
 
 	while ((o = getopt(argc, argv, "df:h")) != EOF)
@@ -85,15 +86,27 @@ main(int argc, char *argv[])
 	/* ignore SIGPIPE (use EPIPE instead) */
 	signal(SIGPIPE, SIG_IGN);
 
+	/*
+	 * create socket for each listening address
+	 * TODO: some address from the conf may cause redundancy
+	 */
 	TAILQ_FOREACH(l, &conf.list, entry)
 	{
+
+		/* get ip string for the current listening socket */
+		warnx("listen %s on port %d", get_ipstring(&l->ss, ip), htons(l->port));
+
 		if ((l->fd = socket(l->ss.ss_family, SOCK_STREAM, 0)) == -1)
 		{
 			warn("socket");
 			l->running = 0;
 			continue;
 		}
-		/* set socket options */
+
+		/*
+		 * set socket options
+		 * TODO: timeout ?
+		 */
 		if (setsockopt(l->fd, SOL_SOCKET, SO_REUSEADDR,
 					(int[]){1}, sizeof(int)) == -1) {
 			warn("setsockopt");
@@ -108,7 +121,7 @@ main(int argc, char *argv[])
 #endif
 
 		if (bind(l->fd, (struct sockaddr *)&l->ss, len) == -1) {
-			warn("bind");
+			warn("%s", ip);
 			l->running = 0;
 			continue;
 		}

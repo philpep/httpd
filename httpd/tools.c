@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <libgen.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "client.h"
 
 static struct mime_type {
@@ -148,4 +151,26 @@ get_mime_type(char *path)
 	}
 
 	return "text/plain; charset=utf-8";
+}
+
+/* WARNING : dst size MUST be at least INET6_ADDRSTRLEN */
+const char *
+get_ipstring(struct sockaddr_storage *ss, char *dst)
+{
+	switch(ss->ss_family) {
+		case AF_INET:
+			dst = inet_ntop(ss->ss_family,
+					&((struct sockaddr_in *)ss)->sin_addr,
+					dst, INET6_ADDRSTRLEN);
+			break;
+		case AF_INET6:
+			dst = inet_ntop(ss->ss_family,
+					&((struct sockaddr_in6 *)ss)->sin6_addr,
+					dst, INET6_ADDRSTRLEN);
+			break;
+		default:
+			dst = NULL;
+			break;
+	}
+	return dst;
 }

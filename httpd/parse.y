@@ -90,8 +90,14 @@ port	: PORT STRING {
 		;
 
 main	: LISTEN on port {
-	  		if (!interface($2, $3)) {
-				if(host($2, $3) <= 0) {
+			if ($2 == NULL) {
+				if (host("0.0.0.0", $3) <= 0 || host("::", $3) <= 0) {
+					yyerror("invalid virtual ip or interface: %s", $2);
+					YYERROR;
+				}
+			}
+			else if (!interface($2, $3)) {
+				if (host($2, $3) <= 0) {
 					yyerror("invalid virtual ip or interface: %s", $2);
 					YYERROR;
 				}

@@ -7,6 +7,7 @@ int zasprintf(char **, const char *, ...);
 void zwrite(int, const char *, ...);
 char *get_date(char *);
 const char *get_mime_type(char *);
+const char *get_ipstring(struct sockaddr_storage *, char *);
 
 
 #endif /* H_TOOLS */

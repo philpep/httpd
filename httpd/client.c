@@ -142,6 +142,7 @@ request_manage(struct Client *c)
 	size_t hdrs_size, i;
 	struct http_hdrs *hel;	/* header element */
 	char *conn;
+	char ip[INET6_ADDRSTRLEN];
 
 	if (c->bsize != 0) {
 		XMALLOC(data, c->bsize);
@@ -260,10 +261,23 @@ request_manage(struct Client *c)
 	else
 		c->conn = KEEP_ALIVE;
 
+	/*
+	 * print request log
+	 * TODO: syslog
+	 */
+
 	if (c->code != 0)
+	{
 		send_error(c);
+		warnx("%s - %d - %s", get_ipstring(&c->ss, ip),
+				c->code, status_get(c->code));
+	}
 	else
+	{
 		send_uri(c);
+		warnx("%s - %s %s - %d %s", get_ipstring(&c->ss, ip),
+				c->smethod, c->uri, c->code, status_get(c->code));
+	}
 
 	if (c->conn == KEEP_ALIVE)
 		return request_manage(c);
