@@ -30,7 +30,7 @@ static struct mime_type {
 };
 
 char **
-splitstr(char *str, const char *sep, size_t *n)
+splitstr(struct Client *c, char *str, const char *sep, size_t *n)
 {
 	int i, size;
 	char *p, *tmp, **split;
@@ -45,7 +45,7 @@ splitstr(char *str, const char *sep, size_t *n)
 			size++;
 
 	size += 2;
-	ZMALLOC(split, size * sizeof(char*));
+	ZMALLOC(c, split, size * sizeof(char*));
 
 	i = 0;
 	for (p = str; p;)
@@ -53,7 +53,7 @@ splitstr(char *str, const char *sep, size_t *n)
 			if (*tmp) {
 				while (*tmp == ' ' || *tmp == '\t')
 					tmp++;
-				ZSTRDUP(split[i], tmp);
+				ZSTRDUP(c, split[i], tmp);
 				i++;
 			}
 
@@ -65,34 +65,8 @@ splitstr(char *str, const char *sep, size_t *n)
 	return split;
 }
 
-char *
-unsplit(char **str, char *sep)
-{
-	size_t i, n, len = 0;
-	char *ret;
-
-	for (n = 0; str[n]; n++)
-		len += strlen(str[n]);
-
-	if (sep)
-		len += n*strlen(sep);
-
-
-	ZMALLOC(ret, len * sizeof(char));
-	ret[0] = '\0';
-
-	for (i = 0; i < n; i++) {
-		ret = strcat(ret, str[i]);
-		if (sep && i != (n-1))
-			ret = strcat(ret, sep);
-	}
-
-	return ret;
-}
-
-
 int
-zasprintf(char **ptr, const char *fmt, ...)
+zasprintf(struct Client *c, char **ptr, const char *fmt, ...)
 {
 	va_list args;
 	int ret = 0;
@@ -102,13 +76,13 @@ zasprintf(char **ptr, const char *fmt, ...)
 	va_end(args);
 
 	if (*ptr)
-		mstack_push(*ptr);
+		mstack_push(c, *ptr);
 
 	return ret;
 }
 
 void
-zwrite(int fd, const char *fmt, ...)
+zwrite(struct Client *c, const char *fmt, ...)
 {
 	char *ptr = NULL;
 	va_list args;
@@ -120,8 +94,8 @@ zwrite(int fd, const char *fmt, ...)
 
 	if (ptr && n > 0)
 	{
-		mstack_push(ptr);
-		HTTPD_WRITE(fd, ptr, n);
+		mstack_push(c, ptr);
+		HTTPD_WRITE(c, ptr, n);
 	}
 }
 

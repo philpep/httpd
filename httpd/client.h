@@ -9,13 +9,12 @@
 #include <netinet/in.h>
 #include <err.h>
 
-#include "tools.h"
 #include "stack.h"
 
-#define HTTPD_WRITE(fd, data, len)					\
+#define HTTPD_WRITE(c, data, len)					\
 	do {											\
-		if (write(fd, data, len) == -1)				\
-			client_destroy();						\
+		if (write(c->fd, data, len) == -1)			\
+			client_destroy(c);						\
 	} while (0)
 
 
@@ -52,16 +51,15 @@ struct Client {
 	SLIST_ENTRY(Client) next;
 };
 
-
 SLIST_HEAD(, Client) clients;
 
 struct Client *client_new(void);
-struct Client *client_get(void);
-void client_destroy(void);
+void client_destroy(struct Client *);
 void request_manage(struct Client *);
 
-void mstack_push(void *);
+void mstack_push(struct Client *, void *);
 
 #define CLIENT_ADD(c)	SLIST_INSERT_HEAD(&clients, c, next)
+#include "tools.h"
 
 #endif /* H_CLIENT */

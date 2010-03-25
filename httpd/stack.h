@@ -36,22 +36,22 @@ typedef struct Stack {
 			err(EXIT_FAILURE, "realloc");   \
 	} while (0)
 
-#define ZMALLOC(ptr, size)					\
+#define ZMALLOC(c, ptr, size)				\
 	do {									\
 		XMALLOC(ptr, size);					\
-		mstack_push(ptr);					\
+		mstack_push(c, ptr);				\
 	} while (0)
 
-#define ZCALLOC(elm, n, size)				\
+#define ZCALLOC(c, elm, n, size)			\
 	do {									\
 		XCALLOC(elm, n, size);				\
-		mstack_push(elm);					\
+		mstack_push(c, elm);				\
 	} while (0)
 
-#define ZSTRDUP(dst, src)					\
+#define ZSTRDUP(c, dst, src)				\
 	do {									\
 		XSTRDUP(dst, src);					\
-		mstack_push(dst);					\
+		mstack_push(c, dst);				\
 	} while (0)
 
 

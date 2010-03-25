@@ -62,9 +62,8 @@ client_new(void)
 }
 
 void
-client_destroy(void)
+client_destroy(struct Client *c)
 {
-	struct Client *c = client_get();
 	Stack *el;
 	char ip[INET6_ADDRSTRLEN];
 
@@ -99,49 +98,13 @@ client_destroy(void)
 }
 
 /*
- * return current client
- * based on thread id
- */
-struct Client *
-client_get(void)
-{
-	pthread_t tid;
-	struct Client *c;
-
-	tid = pthread_self();
-
-	pthread_mutex_lock(&client_lock);
-	SLIST_FOREACH(c, &clients, next)
-	{
-		if (c->tid == tid)
-		{
-			pthread_mutex_unlock(&client_lock);
-			return c;
-		}
-	}
-	pthread_mutex_unlock(&client_lock);
-
-	/*
-	 * normally never reached
-	 * TODO: but there is a bug somewere in
-	 * the code ...
-	 */
-	warnx("client lost\n");
-	pthread_exit(NULL);
-	return NULL;
-}
-
-/*
  * push ptr address into the memory stack of the
  * current client
  */
 void
-mstack_push(void *ptr)
+mstack_push(struct Client *c, void *ptr)
 {
-	struct Client *c = NULL;
 	Stack *el;
-
-	c = client_get();
 
 	if (c && ptr) {
 		XMALLOC(el, sizeof(*el));
@@ -188,8 +151,8 @@ request_manage(struct Client *c)
 		if (n == -1 || n == 0)
 		{
 			if (data)
-				mstack_push(data);
-			client_destroy();
+				mstack_push(c, data);
+			client_destroy(c);
 			break;
 		}
 
@@ -202,20 +165,20 @@ request_manage(struct Client *c)
 
 	}
 
-	mstack_push(data);
+	mstack_push(c, data);
 
 	/* parse request */
 	do
 	{
 		c->code = 0;
 
-		if (!(hdrs = splitstr((char*)data, "\r\n", &hdrs_size))
+		if (!(hdrs = splitstr(c, (char*)data, "\r\n", &hdrs_size))
 				|| !hdrs[0]) {
 			c->code = 400;
 			break;
 		}
 	
-		if (!(line = splitstr(hdrs[0], " ", NULL)) || !line[0]
+		if (!(line = splitstr(c, hdrs[0], " ", NULL)) || !line[0]
 				|| !line[1] || !line[2]) {
 			c->code = 400;
 			break;
@@ -273,7 +236,7 @@ request_manage(struct Client *c)
 
 			*line[0] = '\0';
 			line[0] += 2;
-			ZMALLOC(hel, sizeof(*hel));
+			ZMALLOC(c, hel, sizeof(*hel));
 			hel->key = hdrs[i];
 			hel->val = line[0];
 			SLIST_INSERT_HEAD(&c->reqh, hel, next);
@@ -320,7 +283,7 @@ request_manage(struct Client *c)
 		return request_manage(c);
 	}
 
-	client_destroy();
+	client_destroy(c);
 }
 
 static void
@@ -330,12 +293,12 @@ send_error(struct Client *c)
 	if (c->code == 101 || c->code == 505)
 		header_set(c, "Upgrade", "HTTP/1.1");
 
-	zasprintf(&msg, "<h1 style=\"text-align: center;\">%d - %s</h1>",
+	zasprintf(c, &msg, "<h1 style=\"text-align: center;\">%d - %s</h1>",
 			c->code, status_get(c->code));
 	header_set(c, "Content-Length", "%d", strlen(msg));
 	header_send(c);
 
-	HTTPD_WRITE(c->fd, msg, strlen(msg));
+	HTTPD_WRITE(c, msg, strlen(msg));
 }
 
 static void
@@ -351,19 +314,19 @@ send_uri(struct Client *c)
 	char buf[BUFSIZ];
 
 	if (c->uri[0] == '/') {
-		ZSTRDUP(uri, c->uri);
+		ZSTRDUP(c, uri, c->uri);
 		c->vhost = header_get(c, "Host");
 	}
 	else /* http:// */ {
 		if ((uri = strchr(c->uri + 7, '/')))
 		{
-			ZCALLOC(c->vhost, strlen(c->uri+7), sizeof(char));
+			ZCALLOC(c, c->vhost, strlen(c->uri+7), sizeof(char));
 			memcpy(c->vhost, c->uri+7, uri - c->uri-7);
-			ZSTRDUP(uri, uri);
+			ZSTRDUP(c, uri, uri);
 		}
 		else {
 			c->vhost = c->uri + 7;
-			ZSTRDUP(uri, "/");
+			ZSTRDUP(c, uri, "/");
 		}
 	}
 
@@ -387,7 +350,7 @@ send_uri(struct Client *c)
 	/* search vhost */
 	TAILQ_FOREACH(vh, &conf.vhosts, entry) {
 		if (!strcmp(vh->host, c->vhost)) {
-			ZMALLOC(requested, sizeof(char) *
+			ZMALLOC(c, requested, sizeof(char) *
 					(strlen(vh->root)+strlen(uri)+1));
 			strcpy(requested, vh->root);
 			strcat(requested, uri);
@@ -427,7 +390,7 @@ send_uri(struct Client *c)
 		{
 			if (n == 0)
 				break;
-			HTTPD_WRITE(c->fd, buf, n);
+			HTTPD_WRITE(c, buf, n);
 		}
 
 }
@@ -456,7 +419,7 @@ header_set(struct Client *c, const char *key, const char *fmt, ...)
 	if (!ptr)
 		return;
 
-	mstack_push(ptr);
+	mstack_push(c, ptr);
 
 	SLIST_FOREACH(h, &c->resh, next)
 	{
@@ -468,8 +431,8 @@ header_set(struct Client *c, const char *key, const char *fmt, ...)
 	}
 
 
-	ZMALLOC(h, sizeof(*h));
-	ZSTRDUP(h->key, key);
+	ZMALLOC(c, h, sizeof(*h));
+	ZSTRDUP(c, h->key, key);
 	h->val = ptr;
 	SLIST_INSERT_HEAD(&c->resh, h, next);
 }
@@ -497,10 +460,10 @@ header_send(struct Client *c)
 	header_set(c, "Date", get_date(date));
 	header_set(c, "Server", SERVER_STRING);
 
-	zwrite(c->fd, "HTTP/1.1 %d %s\r\n", c->code, st->msg);
+	zwrite(c, "HTTP/1.1 %d %s\r\n", c->code, st->msg);
 	SLIST_FOREACH(h, &c->resh, next)
-		zwrite(c->fd, "%s: %s\r\n", h->key, h->val);
-	zwrite(c->fd, "\r\n");
+		zwrite(c, "%s: %s\r\n", h->key, h->val);
+	zwrite(c, "\r\n");
 }
 
 static char *
