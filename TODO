@@ -1,0 +1,6 @@
+ - etag
+ - http auth
+ - ssl
+ - cgi
+ - fastcgi
+ - fix all bugs \o/
