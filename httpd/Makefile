@@ -2,7 +2,7 @@ CC=gcc
 YACC=bison
 LEX=flex
 PROG=httpd
-SRC= httpd.c tools.c client.c response.c parse.c token.c
+SRC= httpd.c tools.c client.c parse.c token.c
 CFLAGS+=-W -Wall -Wextra -g -ggdb3 -D_GNU_SOURCE
 LDFLAGS+=-lc -lpthread
 OBJ= $(SRC:.c=.o)

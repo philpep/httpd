@@ -2,6 +2,7 @@
 #define H_CLIENT
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/queue.h>
 #include <pthread.h>
@@ -10,6 +11,13 @@
 
 #include "tools.h"
 #include "stack.h"
+
+#define HTTPD_WRITE(fd, data, len)					\
+	do {											\
+		if (write(fd, data, len) == -1)				\
+			client_destroy();						\
+	} while (0)
+
 
 struct http_hdrs {
 	char *key;
@@ -49,6 +57,7 @@ SLIST_HEAD(, Client) clients;
 struct Client *client_new(void);
 struct Client *client_get(void);
 void client_destroy(void);
+void request_manage(struct Client *);
 
 void mstack_push(void *);
 

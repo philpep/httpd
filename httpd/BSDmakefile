@@ -1,5 +1,5 @@
 PROG= httpd
-SRCS= httpd.c tools.c client.c response.c parse.y token.l
+SRCS= httpd.c tools.c client.c parse.y token.l
 CFLAGS+= -Wall -W -Wextra -g -ggdb3
 LDFLAGS+= -lc -lpthread
 YACCFLAGS+=-d

@@ -23,7 +23,6 @@
 
 #include "httpd.h"
 #include "client.h"
-#include "response.h"
 
 struct httpd conf;
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -108,7 +107,7 @@ main(int argc, char *argv[])
 		len = l->ss.ss_len;
 #endif
 
-		if (bind(l->fd, (struct sockaddr *)&l->ss, sizeof(l->ss)) == -1) {
+		if (bind(l->fd, (struct sockaddr *)&l->ss, len) == -1) {
 			warn("bind");
 			l->running = 0;
 			continue;

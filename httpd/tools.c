@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <libgen.h>
-#include "response.h"
+#include "client.h"
 
 static struct mime_type {
 	const char *ext;
