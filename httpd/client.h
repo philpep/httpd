@@ -47,6 +47,7 @@ struct Client {
 	int					code;		/* status code */
 	enum { KEEP_ALIVE, CLOSE } conn; /* connection type (keep-alive / close */
 	off_t				offset; /* data ofset */
+	size_t				count; /* request count */
 	SLIST_HEAD(, http_hdrs) resh;		/* response headers */
 	SLIST_ENTRY(Client) next;
 };

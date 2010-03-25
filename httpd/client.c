@@ -45,10 +45,8 @@ static struct st_code {
 #include "status_code.h"
 };
 
-#include <unistd.h>
-#include "client.h"
-
 extern pthread_mutex_t client_lock;
+
 
 struct Client *
 client_new(void)
@@ -68,14 +66,22 @@ client_destroy(void)
 {
 	struct Client *c = client_get();
 	Stack *el;
+	char ip[INET6_ADDRSTRLEN];
+
+	/* print stats */
+	warnx("stats for %s : 1 socket for %d requests",
+			get_ipstring(&c->ss, ip), c->count);
 
 	pthread_mutex_lock(&client_lock);
 
+	/* close client socket */
 	close(c->fd);
 
+	/* close client fd */
 	if (c->f != -1)
 		close(c->f);
 
+	/* empty memory stack */
 	while(!SLIST_EMPTY(&c->mstack))
 	{
 		el = SLIST_FIRST(&c->mstack);
@@ -84,6 +90,7 @@ client_destroy(void)
 		free(el);
 	}
 
+	/* delete client from client list */
 	SLIST_REMOVE(&clients, c, Client, next);
 
 	pthread_mutex_unlock(&client_lock);
@@ -91,6 +98,10 @@ client_destroy(void)
 	pthread_exit(NULL);
 }
 
+/*
+ * return current client
+ * based on thread id
+ */
 struct Client *
 client_get(void)
 {
@@ -109,11 +120,21 @@ client_get(void)
 		}
 	}
 	pthread_mutex_unlock(&client_lock);
+
+	/*
+	 * normally never reached
+	 * TODO: but there is a bug somewere in
+	 * the code ...
+	 */
 	warnx("client lost\n");
 	pthread_exit(NULL);
 	return NULL;
 }
 
+/*
+ * push ptr address into the memory stack of the
+ * current client
+ */
 void
 mstack_push(void *ptr)
 {
@@ -130,17 +151,20 @@ mstack_push(void *ptr)
 }
 
 
+/*
+ * Read request and send a response
+ */
 void
 request_manage(struct Client *c)
 {
 	char buf[BUFSIZ];
 	void *data = NULL;
-	ssize_t n = 0;
+	ssize_t n;
 	size_t nread = 0;
 	off_t offset = 0;
 	char **hdrs, **line;
 	size_t hdrs_size, i;
-	struct http_hdrs *hel;	/* header element */
+	struct http_hdrs *hel; /* header element */
 	char *conn;
 	char ip[INET6_ADDRSTRLEN];
 
@@ -162,7 +186,12 @@ request_manage(struct Client *c)
 		n = read(c->fd, buf, BUFSIZ);
 
 		if (n == -1 || n == 0)
+		{
+			if (data)
+				mstack_push(data);
+			client_destroy();
 			break;
+		}
 
 		nread += n;
 
@@ -173,11 +202,9 @@ request_manage(struct Client *c)
 
 	}
 
-	if (n == -1 || n == 0)
-		client_destroy();
-
 	mstack_push(data);
 
+	/* parse request */
 	do
 	{
 		c->code = 0;
@@ -261,6 +288,7 @@ request_manage(struct Client *c)
 	else
 		c->conn = KEEP_ALIVE;
 
+
 	/*
 	 * print request log
 	 * TODO: syslog
@@ -279,8 +307,18 @@ request_manage(struct Client *c)
 				c->smethod, c->uri, c->code, status_get(c->code));
 	}
 
+	/* increment request count */
+	c->count++;
+
 	if (c->conn == KEEP_ALIVE)
+	{
+		/* closes eventually opened file */
+		if (c->f != -1) {
+			close(c->f);
+			c->f = -1;
+		}
 		return request_manage(c);
+	}
 
 	client_destroy();
 }
