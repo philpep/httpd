@@ -395,7 +395,7 @@ send_uri(struct Client *c)
 
 	header_set(c, "Content-Length", "%llu", st.st_size);
 	header_set(c, "Content-Type", "%s", get_mime_type(path));
-	header_set(c, "Etag", "%s", etag);
+	header_set(c, "ETag", "%s", etag);
 	header_send(c);
 
 
