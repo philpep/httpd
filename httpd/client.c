@@ -308,6 +308,8 @@ send_uri(struct Client *c)
 	char path[PATH_MAX];
 	char root[PATH_MAX];
 	char *requested = NULL;
+	char *etag; /* file etag */
+	char *cetag; /* client etag */
 	struct vhost *vh; 
 	struct stat st;
 	ssize_t n;
@@ -380,12 +382,24 @@ send_uri(struct Client *c)
 		return send_error(c);
 	}
 
-	c->code = 200;
+	/* create etag */
+	zasprintf(c, &etag, "%llu%llu", st.st_size, st.st_mtime);
+
+	/* compare etag */
+	if ((cetag = header_get(c, "If-None-Match")) &&
+			!strcmp(etag, cetag))
+		c->code = 304;
+	else
+		c->code = 200;
+
+
 	header_set(c, "Content-Length", "%llu", st.st_size);
 	header_set(c, "Content-Type", "%s", get_mime_type(path));
+	header_set(c, "Etag", "%s", etag);
 	header_send(c);
 
-	if (c->method != HEAD)
+
+	if (c->method != HEAD && c->code == 200)
 		while ((n = read(c->f, buf, BUFSIZ)) != -1)
 		{
 			if (n == 0)
