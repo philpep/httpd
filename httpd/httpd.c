@@ -103,12 +103,14 @@ main(int argc, char *argv[])
 			continue;
 		}
 
-		/*
-		 * set socket options
-		 * TODO: timeout ?
-		 */
+		/* set socket options */
 		if (setsockopt(l->fd, SOL_SOCKET, SO_REUSEADDR,
-					(int[]){1}, sizeof(int)) == -1) {
+					(int[]){1}, sizeof(int)) == -1 ||
+				setsockopt(l->fd, SOL_SOCKET, SO_RCVTIMEO,
+					&conf.timeout, sizeof(struct timeval)) == -1 ||
+				setsockopt(l->fd, SOL_SOCKET, SO_SNDTIMEO,
+					&conf.timeout, sizeof(struct timeval)) == -1)
+		{
 			warn("setsockopt");
 			l->running = 0;
 			continue;

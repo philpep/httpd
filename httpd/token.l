@@ -31,6 +31,7 @@ all						return ALL;
 port					return PORT;
 host					return HOST;
 root					return ROOT;
+set						return SET;
 [0-9]+					yylval.v.n = atoi(yytext); return NUMBER;
 {word}					XSTRDUP(yylval.v.s, yytext); return STRING;
 [ \t]+					/* ignore */

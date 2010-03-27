@@ -55,7 +55,7 @@ YYSTYPE yylval;
 %}
 
 %token LISTEN ON ALL PORT
-%token HOST ROOT LF
+%token HOST ROOT LF SET
 %token <v.s> STRING
 %token <v.n> NUMBER
 
@@ -67,6 +67,7 @@ grammar : /* empty */
 		| grammar LF
 		| grammar main LF
 		| grammar host LF
+		| grammar set LF
 		;
 
 port	: PORT STRING {
@@ -136,6 +137,17 @@ host	: HOST STRING ROOT STRING /* TODO listening on specific addr */
 		}
 		;
 
+set		: SET STRING NUMBER
+		{
+			if (!strcmp($2, "timeout")) {
+				conf.timeout.tv_sec = $3;
+			}
+			else {
+				yyerror("set %s %d: not a valid param", $2, $3);
+				YYERROR;
+			}
+		}
+
 %%
 
 int
@@ -162,6 +174,8 @@ parse_config(const char *filename)
 	/* init conf */
 	TAILQ_INIT(&conf.list);
 	TAILQ_INIT(&conf.vhosts);
+	conf.timeout.tv_sec = 10;
+	conf.timeout.tv_usec = 0;
 
 	file.name = filename;
 	file.lineno = 1;

@@ -48,14 +48,25 @@ Serve virtualhost
 .Ar hostname
 with files in
 .Ar directory
+.It Xo
+.Ic set var val
+.Xc
+Set server options :
+.Bl -tag -width Ds
+.It timeout number
+.Ic
+set timeout in seconds on server socket, 0 for unlimited, default 10.
+.Xc
+.El
 .El
 .Sh EXAMPLES
 .Pp
 .Bd -literal -offset indent
 listen on lo0
+set timeout 25
 host www.example.com root /var/www/example.com/
 host www.foo.net root /var/www/foo/
 .Ed
 .Sh SEE ALSO
-.Xr httpd 8
+.Xr httpd 8,
 .Xr services 5
