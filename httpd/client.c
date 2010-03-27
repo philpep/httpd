@@ -25,11 +25,9 @@
 
 #include "httpd.h"
 #include "client.h"
-#include "version.h"
 
 #define INTERNAL_SERVER_ERROR "HTTP/1.1 500 Internal Server Error\r\n" \
-	"Connection: close\r\n" \
-	"Server: "SERVER_STRING"\r\n\r\n"
+	"Connection: close\r\n\r\n"
 
 static void send_error(struct Client *c);
 static void send_uri(struct Client *c);
@@ -472,7 +470,7 @@ header_send(struct Client *c)
 	if (c->conn == CLOSE)
 		header_set(c, "Connection", "close");
 	header_set(c, "Date", get_date(date));
-	header_set(c, "Server", SERVER_STRING);
+	header_set(c, "Server", conf.servername);
 
 	zwrite(c, "HTTP/1.1 %d %s\r\n", c->code, st->msg);
 	SLIST_FOREACH(h, &c->resh, next)

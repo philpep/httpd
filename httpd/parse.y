@@ -137,16 +137,25 @@ host	: HOST STRING ROOT STRING /* TODO listening on specific addr */
 		}
 		;
 
-set		: SET STRING NUMBER
-		{
+set		: SET STRING NUMBER {
 			if (!strcmp($2, "timeout")) {
 				conf.timeout.tv_sec = $3;
 			}
 			else {
-				yyerror("set %s %d: not a valid param", $2, $3);
+				yyerror("%s: not a valid server param", $2);
 				YYERROR;
 			}
 		}
+		| SET STRING STRING {
+			if (!strcmp($2, "servername")) {
+				conf.servername = $3;
+			}
+			else {
+				yyerror("%s: not a valid server param", $2);
+				YYERROR;
+			}
+		}
+		;
 
 %%
 
@@ -176,6 +185,7 @@ parse_config(const char *filename)
 	TAILQ_INIT(&conf.vhosts);
 	conf.timeout.tv_sec = 10;
 	conf.timeout.tv_usec = 0;
+	conf.servername = NULL;
 
 	file.name = filename;
 	file.lineno = 1;
@@ -189,6 +199,9 @@ parse_config(const char *filename)
 
 	yyparse();
 	close(fd);
+
+	if (!conf.servername)
+		XSTRDUP(conf.servername, "OpenHTTPD/"HTTPD_VERSION);
 
 	return file.error;
 }

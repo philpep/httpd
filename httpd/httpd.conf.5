@@ -49,15 +49,13 @@ Serve virtualhost
 with files in
 .Ar directory
 .It Xo
-.Ic set var val
+.Ic set timeout number
 .Xc
-Set server options :
-.Bl -tag -width Ds
-.It timeout number
-.Ic
-set timeout in seconds on server socket, 0 for unlimited, default 10.
+Set timeout in seconds on server socket, 0 for unlimited, default 10.
+.It Xo
+.Ic set servername string
 .Xc
-.El
+Set server name. Default OpenHTTPD/1.0
 .El
 .Sh EXAMPLES
 .Pp

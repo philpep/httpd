@@ -25,6 +25,7 @@ struct httpd {
 	TAILQ_HEAD(, listener) list;
 	TAILQ_HEAD(, vhost) vhosts;
 	struct timeval timeout;
+	char *servername;
 	char *root;
 };
 

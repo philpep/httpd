@@ -4,6 +4,7 @@ LEX=flex
 PROG=httpd
 SRC= httpd.c tools.c client.c parse.c token.c
 CFLAGS+=-W -Wall -Wextra -g -ggdb3 -D_GNU_SOURCE
+CFLAGS+=-DHTTPD_VERSION=\"1.0\"
 LDFLAGS+=-lc -lpthread
 OBJ= $(SRC:.c=.o)
 
