@@ -25,7 +25,7 @@
 #include "client.h"
 
 struct httpd conf;
-pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t httpd_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 static void usage(void);
 static void *httpd_accept(void *arg);
@@ -180,19 +180,30 @@ httpd_accept(void *arg)
 	socklen_t len;
 	struct Client *c;
 	struct listener *l = arg;
+	size_t cur_conn;
 
 	c = client_new();
 	for(;;)
 	{
+		pthread_mutex_lock(&httpd_mtx);
+		cur_conn = conf.cur_conn;
+		pthread_mutex_unlock(&httpd_mtx);
+
+		if (cur_conn > conf.max_conn)
+			continue;
+
 		len = sizeof(*l);
 		if ((c->fd = accept(l->fd, (struct sockaddr*)&c->ss, &len)) < 0)
 			continue;
 
+		pthread_mutex_lock(&httpd_mtx);
+		CLIENT_ADD(c);
+		conf.cur_conn += 1;
+		pthread_mutex_unlock(&httpd_mtx);
+
 		if (pthread_create(&c->tid, NULL, serve, (void*)c) != 0)
 			warn("pthread_create");
-		pthread_mutex_lock(&client_lock);
-		CLIENT_ADD(c);
-		pthread_mutex_unlock(&client_lock);
+
 		c = client_new();
 	}
 	return NULL;

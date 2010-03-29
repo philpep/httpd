@@ -141,6 +141,9 @@ set		: SET STRING NUMBER {
 			if (!strcmp($2, "timeout")) {
 				conf.timeout.tv_sec = $3;
 			}
+			else if (!strcmp($2, "max-conn")) {
+				conf.max_conn = $3;
+			}
 			else {
 				yyerror("%s: not a valid server param", $2);
 				YYERROR;
@@ -186,6 +189,8 @@ parse_config(const char *filename)
 	conf.timeout.tv_sec = 10;
 	conf.timeout.tv_usec = 0;
 	conf.servername = NULL;
+	conf.max_conn = -1;
+	conf.cur_conn = 0;
 
 	file.name = filename;
 	file.lineno = 1;

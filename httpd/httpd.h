@@ -27,6 +27,8 @@ struct httpd {
 	struct timeval timeout;
 	char *servername;
 	char *root;
+	size_t max_conn;		/* maximum connection */
+	size_t cur_conn;		/* current connection */
 };
 
 extern struct httpd conf;

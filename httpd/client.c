@@ -43,7 +43,7 @@ static struct st_code {
 #include "status_code.h"
 };
 
-extern pthread_mutex_t client_lock;
+extern pthread_mutex_t httpd_mtx;
 
 
 struct Client *
@@ -69,7 +69,7 @@ client_destroy(struct Client *c)
 	warnx("stats for %s : 1 socket for %d requests",
 			get_ipstring(&c->ss, ip), c->count);
 
-	pthread_mutex_lock(&client_lock);
+	pthread_mutex_lock(&httpd_mtx);
 
 	/* close client socket */
 	close(c->fd);
@@ -90,7 +90,9 @@ client_destroy(struct Client *c)
 	/* delete client from client list */
 	SLIST_REMOVE(&clients, c, Client, next);
 
-	pthread_mutex_unlock(&client_lock);
+	conf.cur_conn -= 1;
+
+	pthread_mutex_unlock(&httpd_mtx);
 
 	pthread_exit(NULL);
 }
