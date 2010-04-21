@@ -251,17 +251,17 @@ request_manage(struct Client *c)
 	else
 		c->conn = KEEP_ALIVE;
 
+	/* for the moment only HEAD and GET */
+	if (c->method != HEAD && c->method != GET)
+		c->code = 405;
 
-	/*
-	 * print request log
-	 * TODO: syslog
-	 */
-
+	/* error on request */
 	if (c->code != 0)
 	{
 		send_error(c);
 		warnx("%s - %d - %s", get_ipstring(&c->ss, ip),
 				c->code, status_get(c->code));
+		c->conn = CLOSE;
 	}
 	else
 	{
@@ -296,6 +296,7 @@ send_error(struct Client *c)
 	zasprintf(c, &msg, "<h1 style=\"text-align: center;\">%d - %s</h1>",
 			c->code, status_get(c->code));
 	header_set(c, "Content-Length", "%d", strlen(msg));
+	header_set(c, "Connection", "close");
 	header_send(c);
 
 	HTTPD_WRITE(c, msg, strlen(msg));
