@@ -17,6 +17,7 @@
 			client_destroy(c);						\
 	} while (0)
 
+#define ulong_t unsigned long
 
 struct http_hdrs {
 	char *key;

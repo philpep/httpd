@@ -383,7 +383,7 @@ send_uri(struct Client *c)
 	}
 
 	/* create etag */
-	zasprintf(c, &etag, "%llu%llu", st.st_size, st.st_mtime);
+	zasprintf(c, &etag, "%lu%lu", (ulong_t)st.st_size, (ulong_t)st.st_mtime);
 
 	/* compare etag */
 	if ((cetag = header_get(c, "If-None-Match")) &&
@@ -393,7 +393,7 @@ send_uri(struct Client *c)
 		c->code = 200;
 
 
-	header_set(c, "Content-Length", "%llu", st.st_size);
+	header_set(c, "Content-Length", "%lu", (ulong_t)st.st_size);
 	header_set(c, "Content-Type", "%s", get_mime_type(path));
 	header_set(c, "ETag", "%s", etag);
 	header_send(c);

@@ -133,12 +133,12 @@ get_ipstring(struct sockaddr_storage *ss, char *dst)
 {
 	switch(ss->ss_family) {
 		case AF_INET:
-			dst = inet_ntop(ss->ss_family,
+			inet_ntop(ss->ss_family,
 					&((struct sockaddr_in *)ss)->sin_addr,
 					dst, INET6_ADDRSTRLEN);
 			break;
 		case AF_INET6:
-			dst = inet_ntop(ss->ss_family,
+			inet_ntop(ss->ss_family,
 					&((struct sockaddr_in6 *)ss)->sin6_addr,
 					dst, INET6_ADDRSTRLEN);
 			break;

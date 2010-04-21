@@ -1,6 +1,6 @@
 PROG= httpd
 SRCS= httpd.c tools.c client.c parse.y token.l
-CFLAGS+= -Wall -W -Wextra -g -ggdb3
+CFLAGS+= -Wall -W -Wextra -g -ggdb3 -fno-inline -O0
 CFLAGS+= -DHTTPD_VERSION=\"1.0\"
 LDFLAGS+= -lc -lpthread
 YACCFLAGS+=-d
